@@ -11,6 +11,7 @@ repository = "https://github.com/Matrix-Zhang/kcp"
 edition = "2021"
 
 [features]
+default = ["fastack-conserve"]
 fastack-conserve = []
 tokio = ["dep:tokio"]
 
