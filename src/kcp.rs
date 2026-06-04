@@ -236,8 +236,8 @@ pub struct Kcp<Output> {
     ts_flush: u32,
     xmit: u32,
 
-    /// Enable nodelay
-    nodelay: bool,
+    /// Nodelay level (0=off, 1=on, 2=on+gentler RTO growth)
+    nodelay: u32,
     /// Updated has been called or not
     updated: bool,
 
@@ -373,7 +373,7 @@ impl<Output> Kcp<Output> {
             current: 0,
             interval: KCP_INTERVAL,
             ts_flush: KCP_INTERVAL,
-            nodelay: false,
+            nodelay: 0,
             updated: false,
             ssthresh: KCP_THRESH_INIT,
             fastresend: 0,
@@ -969,18 +969,18 @@ impl<Output> Kcp<Output> {
 
     /// Set nodelay
     ///
-    /// fastest config: nodelay(true, 20, 2, true)
+    /// fastest config: nodelay(2, 20, 2, true)
     ///
-    /// `nodelay`: default is disable (false)
+    /// `nodelay`: 0=disable, 1=enable, 2=enable+gentler RTO growth (default is 0)
     /// `interval`: internal update timer interval in millisec, default is 100ms
     /// `resend`: 0:disable fast resend(default), 1:enable fast resend
     /// `nc`: `false`: normal congestion control(default), `true`: disable congestion control
-    pub fn set_nodelay(&mut self, nodelay: bool, interval: i32, resend: i32, nc: bool) {
-        if nodelay {
-            self.nodelay = true;
+    pub fn set_nodelay(&mut self, nodelay: i32, interval: i32, resend: i32, nc: bool) {
+        if nodelay > 0 {
+            self.nodelay = nodelay as u32;
             self.rx_minrto = KCP_RTO_NDL;
         } else {
-            self.nodelay = false;
+            self.nodelay = 0;
             self.rx_minrto = KCP_RTO_MIN;
         }
 
@@ -1192,7 +1192,7 @@ impl<Output: Write> Kcp<Output> {
             u32::max_value()
         };
 
-        let rtomin = if !self.nodelay { self.rx_rto >> 3 } else { 0 };
+        let rtomin = if self.nodelay == 0 { self.rx_rto >> 3 } else { 0 };
 
         let mut lost = false;
         let mut change = 0;
@@ -1209,10 +1209,14 @@ impl<Output: Write> Kcp<Output> {
                 need_send = true;
                 snd_segment.xmit += 1;
                 self.xmit += 1;
-                if !self.nodelay {
+                if self.nodelay == 0 {
                     snd_segment.rto += cmp::max(snd_segment.rto, self.rx_rto);
                 } else {
-                    let step = snd_segment.rto; // (kcp->nodelay < 2) ? ((IINT32)(segment->rto)) : kcp->rx_rto;
+                    let step = if self.nodelay >= 2 {
+                        self.rx_rto
+                    } else {
+                        snd_segment.rto
+                    };
                     snd_segment.rto += step / 2;
                 }
                 snd_segment.resendts = self.current + snd_segment.rto;
@@ -1434,7 +1438,7 @@ impl<Output: AsyncWrite + Unpin> Kcp<Output> {
             u32::max_value()
         };
 
-        let rtomin = if !self.nodelay { self.rx_rto >> 3 } else { 0 };
+        let rtomin = if self.nodelay == 0 { self.rx_rto >> 3 } else { 0 };
 
         let mut lost = false;
         let mut change = 0;
@@ -1451,10 +1455,14 @@ impl<Output: AsyncWrite + Unpin> Kcp<Output> {
                 need_send = true;
                 snd_segment.xmit += 1;
                 self.xmit += 1;
-                if !self.nodelay {
+                if self.nodelay == 0 {
                     snd_segment.rto += cmp::max(snd_segment.rto, self.rx_rto);
                 } else {
-                    let step = snd_segment.rto; // (kcp->nodelay < 2) ? ((IINT32)(segment->rto)) : kcp->rx_rto;
+                    let step = if self.nodelay >= 2 {
+                        self.rx_rto
+                    } else {
+                        snd_segment.rto
+                    };
                     snd_segment.rto += step / 2;
                 }
                 snd_segment.resendts = self.current + snd_segment.rto;
