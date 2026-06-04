@@ -1158,6 +1158,7 @@ impl<Output: Write> Kcp<Output> {
         // println!("SNDBUF size {}", self.snd_buf.len());
 
         // calculate window size
+        let prior_cwnd = self.cwnd;
         let mut cwnd = cmp::min(self.snd_wnd, self.rmt_wnd);
         if !self.nocwnd {
             cwnd = cmp::min(self.cwnd, cwnd);
@@ -1264,7 +1265,7 @@ impl<Output: Write> Kcp<Output> {
         }
 
         if lost {
-            self.ssthresh = cwnd / 2;
+            self.ssthresh = prior_cwnd / 2;
             if self.ssthresh < KCP_THRESH_MIN {
                 self.ssthresh = KCP_THRESH_MIN;
             }
@@ -1399,6 +1400,7 @@ impl<Output: AsyncWrite + Unpin> Kcp<Output> {
         // println!("SNDBUF size {}", self.snd_buf.len());
 
         // calculate window size
+        let prior_cwnd = self.cwnd;
         let mut cwnd = cmp::min(self.snd_wnd, self.rmt_wnd);
         if !self.nocwnd {
             cwnd = cmp::min(self.cwnd, cwnd);
@@ -1505,7 +1507,7 @@ impl<Output: AsyncWrite + Unpin> Kcp<Output> {
         }
 
         if lost {
-            self.ssthresh = cwnd / 2;
+            self.ssthresh = prior_cwnd / 2;
             if self.ssthresh < KCP_THRESH_MIN {
                 self.ssthresh = KCP_THRESH_MIN;
             }
