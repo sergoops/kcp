@@ -30,8 +30,8 @@ const KCP_CMD_WINS: u8 = 84; // cmd: window size (tell)
 const KCP_ASK_SEND: u32 = 1; // need to send IKCP_CMD_WASK
 const KCP_ASK_TELL: u32 = 2; // need to send IKCP_CMD_WINS
 
-const KCP_WND_SND: u16 = 32;
-const KCP_WND_RCV: u16 = 128; // must >= max fragment size
+const KCP_WND_SND: u32 = 32;
+const KCP_WND_RCV: u32 = 128; // must >= max fragment size
 
 const KCP_MTU_DEF: usize = 1400;
 // const KCP_ACK_FAST: u32 = 3;
@@ -41,8 +41,8 @@ const KCP_INTERVAL: u32 = 100;
 pub const KCP_OVERHEAD: usize = 24;
 const KCP_DEADLINK: u32 = 20;
 
-const KCP_THRESH_INIT: u16 = 2;
-const KCP_THRESH_MIN: u16 = 2;
+const KCP_THRESH_INIT: u32 = 2;
+const KCP_THRESH_MIN: u32 = 2;
 
 const KCP_PROBE_INIT: u32 = 5000; // 5 secs to probe window size
 const KCP_PROBE_LIMIT: u32 = 120000; // up to 120 secs to probe window
@@ -81,7 +81,7 @@ struct KcpSegment {
     conv: u32,
     cmd: u8,
     frg: u8,
-    wnd: u16,
+    wnd: u32,
     ts: u32,
     sn: u32,
     una: u32,
@@ -123,7 +123,7 @@ impl KcpSegment {
         buf.put_u32_le(self.conv);
         buf.put_u8(self.cmd);
         buf.put_u8(self.frg);
-        buf.put_u16_le(self.wnd);
+        buf.put_u16_le(self.wnd as u16);
         buf.put_u32_le(self.ts);
         buf.put_u32_le(self.sn);
         buf.put_u32_le(self.una);
@@ -204,7 +204,7 @@ pub struct Kcp<Output> {
     rcv_nxt: u32,
 
     /// Congestion window threshold
-    ssthresh: u16,
+    ssthresh: u32,
 
     /// ACK receive variable RTT
     rx_rttval: u32,
@@ -216,13 +216,13 @@ pub struct Kcp<Output> {
     rx_minrto: u32,
 
     /// Send window
-    snd_wnd: u16,
+    snd_wnd: u32,
     /// Receive window
-    rcv_wnd: u16,
+    rcv_wnd: u32,
     /// Remote receive window
-    rmt_wnd: u16,
+    rmt_wnd: u32,
     /// Congestion window
-    cwnd: u16,
+    cwnd: u32,
     /// Check window
     /// - IKCP_ASK_TELL, telling window size to remote
     /// - IKCP_ASK_SEND, ask remote for window size
@@ -742,7 +742,7 @@ impl<Output> Kcp<Output> {
                 }
             }
 
-            self.rmt_wnd = wnd;
+            self.rmt_wnd = wnd as u32;
 
             self.parse_una(una);
             self.shrink_buf();
@@ -800,7 +800,7 @@ impl<Output> Kcp<Output> {
                             segment.conv = conv;
                             segment.cmd = cmd;
                             segment.frg = frg;
-                            segment.wnd = wnd;
+                            segment.wnd = wnd as u32;
                             segment.ts = ts;
                             segment.sn = sn;
                             segment.una = una;
@@ -845,7 +845,7 @@ impl<Output> Kcp<Output> {
                 self.incr += (mss * mss) / self.incr + (mss / 16);
                 if (self.cwnd as usize + 1) * mss <= self.incr {
                     // self.cwnd += 1;
-                    self.cwnd = ((self.incr + mss - 1) / if mss > 0 { mss } else { 1 }) as u16;
+                    self.cwnd = ((self.incr + mss - 1) / if mss > 0 { mss } else { 1 }) as u32;
                 }
             }
             if self.cwnd > self.rmt_wnd {
@@ -857,9 +857,9 @@ impl<Output> Kcp<Output> {
         Ok(buf.position() as usize)
     }
 
-    fn wnd_unused(&self) -> u16 {
+    fn wnd_unused(&self) -> u32 {
         if self.rcv_queue.len() < self.rcv_wnd as usize {
-            self.rcv_wnd - self.rcv_queue.len() as u16
+            self.rcv_wnd - self.rcv_queue.len() as u32
         } else {
             0
         }
@@ -1001,23 +1001,23 @@ impl<Output> Kcp<Output> {
     /// set maximum window size: `sndwnd=32`, `rcvwnd=32` by default
     pub fn set_wndsize(&mut self, sndwnd: u16, rcvwnd: u16) {
         if sndwnd > 0 {
-            self.snd_wnd = sndwnd as u16;
+            self.snd_wnd = sndwnd as u32;
         }
 
         if rcvwnd > 0 {
-            self.rcv_wnd = cmp::max(rcvwnd, KCP_WND_RCV) as u16;
+            self.rcv_wnd = cmp::max(rcvwnd as u32, KCP_WND_RCV);
         }
     }
 
     /// `snd_wnd` Send window
     #[inline]
-    pub fn snd_wnd(&self) -> u16 {
+    pub fn snd_wnd(&self) -> u32 {
         self.snd_wnd
     }
 
     /// `rcv_wnd` Receive window
     #[inline]
-    pub fn rcv_wnd(&self) -> u16 {
+    pub fn rcv_wnd(&self) -> u32 {
         self.rcv_wnd
     }
 
@@ -1029,7 +1029,7 @@ impl<Output> Kcp<Output> {
 
     /// Get `rmt_wnd`, remote window size
     #[inline]
-    pub fn rmt_wnd(&self) -> u16 {
+    pub fn rmt_wnd(&self) -> u32 {
         self.rmt_wnd
     }
 
@@ -1165,7 +1165,7 @@ impl<Output: Write> Kcp<Output> {
         }
 
         // move data from snd_queue to snd_buf
-        while timediff(self.snd_nxt, self.snd_una + cwnd as u32) < 0 {
+        while timediff(self.snd_nxt, self.snd_una + cwnd) < 0 {
             match self.snd_queue.pop_front() {
                 Some(mut new_segment) => {
                     new_segment.conv = self.conv;
@@ -1222,7 +1222,7 @@ impl<Output: Write> Kcp<Output> {
                 snd_segment.resendts = self.current + snd_segment.rto;
                 lost = true;
             } else if snd_segment.fastack >= resent {
-                if snd_segment.xmit <= self.fastlimit || self.fastlimit <= 0 {
+                if snd_segment.xmit <= self.fastlimit || self.fastlimit == 0 {
                     need_send = true;
                     snd_segment.xmit += 1;
                     snd_segment.fastack = 0;
@@ -1260,11 +1260,11 @@ impl<Output: Write> Kcp<Output> {
         // update ssthresh
         if change > 0 {
             let inflight = self.snd_nxt - self.snd_una;
-            self.ssthresh = inflight as u16 / 2;
+            self.ssthresh = inflight / 2;
             if self.ssthresh < KCP_THRESH_MIN {
                 self.ssthresh = KCP_THRESH_MIN;
             }
-            self.cwnd = self.ssthresh + resent as u16;
+            self.cwnd = self.ssthresh + resent;
             self.incr = self.cwnd as usize * self.mss;
         }
 
@@ -1411,7 +1411,7 @@ impl<Output: AsyncWrite + Unpin> Kcp<Output> {
         }
 
         // move data from snd_queue to snd_buf
-        while timediff(self.snd_nxt, self.snd_una + cwnd as u32) < 0 {
+        while timediff(self.snd_nxt, self.snd_una + cwnd) < 0 {
             match self.snd_queue.pop_front() {
                 Some(mut new_segment) => {
                     new_segment.conv = self.conv;
@@ -1468,7 +1468,7 @@ impl<Output: AsyncWrite + Unpin> Kcp<Output> {
                 snd_segment.resendts = self.current + snd_segment.rto;
                 lost = true;
             } else if snd_segment.fastack >= resent {
-                if snd_segment.xmit <= self.fastlimit || self.fastlimit <= 0 {
+                if snd_segment.xmit <= self.fastlimit || self.fastlimit == 0 {
                     need_send = true;
                     snd_segment.xmit += 1;
                     snd_segment.fastack = 0;
@@ -1506,11 +1506,11 @@ impl<Output: AsyncWrite + Unpin> Kcp<Output> {
         // update ssthresh
         if change > 0 {
             let inflight = self.snd_nxt - self.snd_una;
-            self.ssthresh = inflight as u16 / 2;
+            self.ssthresh = inflight / 2;
             if self.ssthresh < KCP_THRESH_MIN {
                 self.ssthresh = KCP_THRESH_MIN;
             }
-            self.cwnd = self.ssthresh + resent as u16;
+            self.cwnd = self.ssthresh + resent;
             self.incr = self.cwnd as usize * self.mss;
         }
 
