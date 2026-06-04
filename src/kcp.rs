@@ -909,14 +909,14 @@ impl<Output> Kcp<Output> {
         }
 
         if timediff(current, ts_flush) >= 0 {
-            return 0;
+            return current;
         }
 
         let tm_flush = timediff(ts_flush, current) as u32;
         for seg in &self.snd_buf {
             let diff = timediff(seg.resendts, current);
             if diff <= 0 {
-                return 0;
+                return current;
             }
             if (diff as u32) < tm_packet {
                 tm_packet = diff as u32;
@@ -928,7 +928,7 @@ impl<Output> Kcp<Output> {
             minimal = self.interval;
         }
 
-        minimal
+        current + minimal
     }
 
     /// Change MTU size, default is 1400
