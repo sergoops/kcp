@@ -894,7 +894,7 @@ impl<Output> Kcp<Output> {
     /// You can call `update` in that time without calling it repeatly.
     pub fn check(&self, current: u32) -> u32 {
         if !self.updated {
-            return 0;
+            return current;
         }
 
         let mut ts_flush = self.ts_flush;
