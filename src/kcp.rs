@@ -600,6 +600,7 @@ impl<Output> Kcp<Output> {
         }
     }
 
+    #[allow(unused_variables)]
     fn parse_fastack(&mut self, sn: u32, ts: u32) {
         if timediff(sn, self.snd_una) < 0 || timediff(sn, self.snd_nxt) >= 0 {
             return;
@@ -610,11 +611,11 @@ impl<Output> Kcp<Output> {
                 break;
             } else if sn != seg.sn {
                 #[cfg(feature = "fastack-conserve")]
-                {
+                if timediff(ts, seg.ts) >= 0 {
                     seg.fastack += 1;
                 }
                 #[cfg(not(feature = "fastack-conserve"))]
-                if timediff(ts, seg.ts) >= 0 {
+                {
                     seg.fastack += 1;
                 }
             }
@@ -763,12 +764,12 @@ impl<Output> Kcp<Output> {
                         latest_ts = ts;
                     } else if timediff(sn, max_ack) > 0 {
                         #[cfg(feature = "fastack-conserve")]
-                        {
+                        if timediff(ts, latest_ts) > 0 {
                             max_ack = sn;
                             latest_ts = ts;
                         }
                         #[cfg(not(feature = "fastack-conserve"))]
-                        if timediff(ts, latest_ts) > 0 {
+                        {
                             max_ack = sn;
                             latest_ts = ts;
                         }
