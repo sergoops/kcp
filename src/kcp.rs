@@ -514,6 +514,9 @@ impl<Output> Kcp<Output> {
         };
 
         if count >= KCP_WND_RCV as usize {
+            if self.stream && sent_size > 0 {
+                return Ok(sent_size);
+            }
             debug!("send bufsize={} mss={} too large", buf.len(), self.mss);
             return Err(Error::UserBufTooBig);
         }
