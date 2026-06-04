@@ -44,7 +44,7 @@ const KCP_DEADLINK: u32 = 20;
 const KCP_THRESH_INIT: u16 = 2;
 const KCP_THRESH_MIN: u16 = 2;
 
-const KCP_PROBE_INIT: u32 = 7000; // 7 secs to probe window size
+const KCP_PROBE_INIT: u32 = 5000; // 5 secs to probe window size
 const KCP_PROBE_LIMIT: u32 = 120000; // up to 120 secs to probe window
 const KCP_FASTACK_LIMIT: u32 = 5; // max times to trigger fastack
 
