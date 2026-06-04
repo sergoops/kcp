@@ -266,7 +266,7 @@ fn run(mode: TestMode, msgcount: u32, lostrate: u32) {
             kcp2.set_nodelay(2, 10, 2, true);
 
             kcp1.set_rx_minrto(10);
-            kcp2.set_fast_resend(1);
+            kcp1.set_fast_resend(1);
         }
     }
 
