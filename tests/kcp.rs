@@ -13,8 +13,8 @@ use std::time::Duration;
 
 use bytes::buf::{Buf, BufMut};
 use bytes::BytesMut;
-use rand::Rng;
 use kcp::Kcp;
+use rand::Rng;
 
 #[derive(Debug)]
 struct DelayPacket {
@@ -617,10 +617,7 @@ mod tests {
     #[test]
     fn kcp_fragment_basic() {
         let out = Rc::new(RefCell::new(Vec::<u8>::new()));
-        let mut kcp = Kcp::new(
-            0x11223344,
-            SharedBuf { buf: out.clone() },
-        );
+        let mut kcp = Kcp::new(0x11223344, SharedBuf { buf: out.clone() });
         kcp.set_wndsize(128, 128);
         kcp.set_nodelay(2, 10, 2, true);
         kcp.set_rx_minrto(10);
@@ -643,10 +640,7 @@ mod tests {
     #[test]
     fn kcp_fragment_large() {
         let out = Rc::new(RefCell::new(Vec::<u8>::new()));
-        let mut kcp = Kcp::new(
-            0x11223344,
-            SharedBuf { buf: out.clone() },
-        );
+        let mut kcp = Kcp::new(0x11223344, SharedBuf { buf: out.clone() });
         kcp.set_wndsize(128, 128);
         kcp.set_nodelay(2, 10, 2, true);
         kcp.set_rx_minrto(10);
@@ -669,15 +663,13 @@ mod tests {
     // ─── T1.4 Window / Flow Control ───────────────────────────────────────
 
     macro_rules! pipe {
-        ($src:ident, $dst:ident, $out:ident, $t:expr) => {
-            {
-                $src.update($t).unwrap();
-                let data: Vec<u8> = $out.borrow_mut().drain(..).collect();
-                if !data.is_empty() {
-                    $dst.input(&data).unwrap();
-                }
+        ($src:ident, $dst:ident, $out:ident, $t:expr) => {{
+            $src.update($t).unwrap();
+            let data: Vec<u8> = $out.borrow_mut().drain(..).collect();
+            if !data.is_empty() {
+                $dst.input(&data).unwrap();
             }
-        };
+        }};
     }
 
     #[test]
@@ -687,14 +679,8 @@ mod tests {
         let out1 = Rc::new(RefCell::new(Vec::<u8>::new()));
         let out2 = Rc::new(RefCell::new(Vec::<u8>::new()));
 
-        let mut kcp1 = Kcp::new(
-            0x11223344,
-            SharedBuf { buf: out1.clone() },
-        );
-        let mut kcp2 = Kcp::new(
-            0x11223344,
-            SharedBuf { buf: out2.clone() },
-        );
+        let mut kcp1 = Kcp::new(0x11223344, SharedBuf { buf: out1.clone() });
+        let mut kcp2 = Kcp::new(0x11223344, SharedBuf { buf: out2.clone() });
 
         // snd_wnd=3 so only 3 segments can be in flight
         // rcv_wnd is forced >= KCP_WND_RCV (128) so receiver is never a bottleneck
@@ -742,14 +728,8 @@ mod tests {
         let out1 = Rc::new(RefCell::new(Vec::<u8>::new()));
         let out2 = Rc::new(RefCell::new(Vec::<u8>::new()));
 
-        let mut kcp1 = Kcp::new(
-            0x11223344,
-            SharedBuf { buf: out1.clone() },
-        );
-        let mut kcp2 = Kcp::new(
-            0x11223344,
-            SharedBuf { buf: out2.clone() },
-        );
+        let mut kcp1 = Kcp::new(0x11223344, SharedBuf { buf: out1.clone() });
+        let mut kcp2 = Kcp::new(0x11223344, SharedBuf { buf: out2.clone() });
 
         kcp1.set_wndsize(1, 128);
         kcp2.set_wndsize(1, 128);

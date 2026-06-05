@@ -714,8 +714,11 @@ impl<Output> Kcp<Output> {
             if conv != self.conv {
                 if self.input_conv {
                     // Guard: only allow if instance is fresh — no updates, no data flow
-                    if self.updated || self.snd_nxt != 0 || self.rcv_nxt != 0
-                        || !self.snd_queue.is_empty() || !self.snd_buf.is_empty()
+                    if self.updated
+                        || self.snd_nxt != 0
+                        || self.rcv_nxt != 0
+                        || !self.snd_queue.is_empty()
+                        || !self.snd_buf.is_empty()
                     {
                         return Err(Error::ConvAlreadyBound);
                     }
@@ -1204,7 +1207,11 @@ impl<Output: Write> Kcp<Output> {
             u32::max_value()
         };
 
-        let rtomin = if self.nodelay == 0 { self.rx_rto >> 3 } else { 0 };
+        let rtomin = if self.nodelay == 0 {
+            self.rx_rto >> 3
+        } else {
+            0
+        };
 
         let mut lost = false;
         let mut change = 0;
@@ -1450,7 +1457,11 @@ impl<Output: AsyncWrite + Unpin> Kcp<Output> {
             u32::max_value()
         };
 
-        let rtomin = if self.nodelay == 0 { self.rx_rto >> 3 } else { 0 };
+        let rtomin = if self.nodelay == 0 {
+            self.rx_rto >> 3
+        } else {
+            0
+        };
 
         let mut lost = false;
         let mut change = 0;
