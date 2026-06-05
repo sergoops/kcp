@@ -656,7 +656,15 @@ impl<Output> Kcp<Output> {
         self.move_buf();
     }
 
-    /// Get `conv` from the next `input` call
+    /// Accept `conv` from the first incoming packet in the next `input()` call.
+    ///
+    /// This is useful for server-side conv assignment: create `Kcp::new(0, output)`,
+    /// call `input_conv()`, then the first `input()` will adopt the remote conv.
+    ///
+    /// # Panic guard
+    ///
+    /// Returns `Err(ConvAlreadyBound)` if the instance has already been used
+    /// (`update()`, `send()`, or any data flow has started).
     #[inline]
     pub fn input_conv(&mut self) {
         self.input_conv = true;
@@ -704,9 +712,13 @@ impl<Output> Kcp<Output> {
         while buf.remaining() >= KCP_OVERHEAD as usize {
             let conv = buf.get_u32_le();
             if conv != self.conv {
-                // This allows getting conv from this call, which allows us to allocate
-                // conv from the server side.
                 if self.input_conv {
+                    // Guard: only allow if instance is fresh — no updates, no data flow
+                    if self.updated || self.snd_nxt != 0 || self.rcv_nxt != 0
+                        || !self.snd_queue.is_empty() || !self.snd_buf.is_empty()
+                    {
+                        return Err(Error::ConvAlreadyBound);
+                    }
                     debug!("input conv={} updated, original conv={}", conv, self.conv);
                     self.conv = conv;
                     self.input_conv = false;
