@@ -14,7 +14,7 @@ use std::time::Duration;
 use bytes::buf::{Buf, BufMut};
 use bytes::BytesMut;
 use kcp::Kcp;
-use rand::Rng;
+use rand::RngExt;
 
 #[derive(Debug)]
 struct DelayPacket {
